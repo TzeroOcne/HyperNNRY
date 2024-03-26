@@ -27,13 +27,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 chrome.runtime.onConnect.addListener(hc => {
   // frameId and tabId should be int
-  const { frameId, tabId } = JSON.parse(hc.name);
-  const interceptorPort = chrome.tabs.connect(tabId, { frameId });
-  interceptorPort.onMessage.addListener(msg => {
+  // TODO use frameId, it is needed for holodex multiple yt in one tab
+  const { tabId } = JSON.parse(hc.name);
+  const interceptorPort = chrome.tabs.connect(tabId);
+
+  const onInterceptorMessage = (msg): void => {
     hc.postMessage(msg);
+  };
+  interceptorPort.onMessage.addListener(onInterceptorMessage);
+  interceptorPort.onDisconnect.addListener(() => {
+    interceptorPort.onMessage.removeListener(onInterceptorMessage);
+    hc.disconnect();
   });
-  hc.onMessage.addListener(msg => {
+
+  const onHcMessage = (msg): void => {
     interceptorPort.postMessage(msg);
+  };
+  hc.onMessage.addListener(onHcMessage);
+  hc.onDisconnect.addListener(() => {
+    hc.onMessage.removeListener(onHcMessage);
+    interceptorPort.disconnect();
   });
 });
 

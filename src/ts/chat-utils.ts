@@ -68,24 +68,27 @@ export const checkInjected = (error: string): boolean => {
   return false;
 };
 
-export const useReconnect = <T extends Chat.Port>(connect: () => T): T & { destroy: () => void } => {
-  let actualPort = connect();
-  const onDisconnect = (): void => {
-    actualPort = connect();
-    actualPort.onDisconnect.addListener(onDisconnect);
+type ReconnectingPort<T extends Chat.Port> =
+  Partial<Pick<T, 'name' | 'disconnect' | 'postMessage' | 'onMessage' | 'onDisconnect'>> &
+  { destroy: () => void };
+
+export const useReconnect = <T>(connect: () => Promise<T>): ReconnectingPort<T> => {
+  let actualPort: T | null = null;
+  const doConnect = async (): Promise<void> => {
+    actualPort = await connect();
+    actualPort.onDisconnect.addListener(doConnect);
   };
-  actualPort.onDisconnect.addListener(onDisconnect);
+  doConnect();
 
   return {
-    ...actualPort,
-    get name() { return actualPort.name; },
-    get disconnect() { return actualPort.disconnect; },
-    get postMessage() { return actualPort.postMessage; },
-    get onMessage() { return actualPort.onMessage; },
-    get onDisconnect() { return actualPort.onDisconnect; },
+    get name() { return actualPort?.name; },
+    get disconnect() { return actualPort?.disconnect; },
+    get postMessage() { return actualPort?.postMessage; },
+    get onMessage() { return actualPort?.onMessage; },
+    get onDisconnect() { return actualPort?.onDisconnect; },
     destroy: () => {
-      actualPort.onDisconnect.removeListener(onDisconnect);
-      actualPort.disconnect();
+      actualPort?.onDisconnect.removeListener(onDisconnect);
+      actualPort?.disconnect();
     }
   };
 };
