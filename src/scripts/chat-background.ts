@@ -27,9 +27,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 chrome.runtime.onConnect.addListener(hc => {
   // frameId and tabId should be int
-  // TODO use frameId, it is needed for holodex multiple yt in one tab
-  const { tabId } = JSON.parse(hc.name);
-  const interceptorPort = chrome.tabs.connect(tabId);
+  const { tabId, frameId } = JSON.parse(hc.name);
+  const interceptorPort = chrome.tabs.connect(tabId, { frameId });
 
   const onInterceptorMessage = (msg): void => {
     hc.postMessage(msg);
